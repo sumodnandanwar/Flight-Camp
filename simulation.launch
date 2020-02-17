@@ -1,0 +1,144 @@
+<?xml version="1.0"?>
+
+<launch>
+  <arg name="mav_name" default="crazyflie"/>
+  <arg name="world_name" default="tutorial_1"/>
+  <arg name="debug" default="false"/>
+  <arg name="gui" default="true"/>
+  <arg name="paused" default="false"/>
+
+  <!-- Camera arguments -->
+  <arg name="enable_camera" default="true" />
+  <arg name="camera_fps" default="60.0" />
+  <arg name="camera_hfov" default="1.83259571" />
+  <arg name="camera_image_width" default="640" />
+  <arg name="camera_image_height" default="480" />
+  <arg name="camera_min_distance" default="0.1" />
+  <arg name="camera_max_distance" default="100" />
+  <arg name="camera_noise_stddev" default="0.00001" />
+
+  <arg name="only_command" default="false" />
+
+  <!--  Handler Arguments       -->
+  <arg name="nbQuads" default="1" />
+  <arg name="cfPrefix" default="cf" />
+  <arg name="udpPort" default="19950"/>
+  <arg name="handerName" default="handler1"/>
+  <arg name="firstIndex" default="1"/>
+
+  <!-- Crazyflie arguments -->
+  <arg name="is_hitl" default="false"/>
+  <arg name="enable_logging" default="true" />
+  <arg name="enable_parameters" default="true" />
+  <arg name="use_ros_time" default="true" />
+  <arg name="enable_logging_imu" default="false" />
+  <arg name="enable_logging_temperature" default="false" />
+  <arg name="enable_logging_magnetic_field" default="false" />
+  <arg name="enable_logging_pressure" default="false" />
+  <arg name="enable_logging_battery" default="false" />
+  <arg name="enable_logging_packets" default="false" />
+
+  <arg name="tf_prefix_1" default="$(arg cfPrefix)1" />
+  <arg name="color_prop_front_1" default="Blue" />
+  <arg name="color_prop_back_1" default="Red" />
+  <arg name="x_1" default="0.0" />
+  <arg name="y_1" default="0.0" />
+  <arg name="z_1" default="0.03" />
+  <arg name="yaw_1" default="0.0" />
+
+  <!-- The following line causes gzmsg and gzerr messages to be printed to the console
+      (even when Gazebo is started through roslaunch) -->
+  <arg name="verbose" default="true"/>
+
+  <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find crazyflie_gazebo)/models:$(find dd2419_simulation)/models/signs:$(find dd2419_simulation)/models/markers"/>
+  <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find crazyflie_gazebo)/models:$(find dd2419_simulation)/models/signs:$(find dd2419_simulation)/models/markers"/>
+
+  <!-- Start the Gazebo simulator -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find dd2419_simulation)/worlds/$(arg world_name).world"/>
+    <arg name="debug" value="$(arg debug)" />
+    <arg name="paused" value="$(arg paused)" />
+    <arg name="gui" value="$(arg gui)" />
+    <arg name="verbose" value="$(arg verbose)"/>
+  </include>
+
+  <!-- Spawn the crazyflie model -->
+  <group ns="$(arg cfPrefix)1">
+    <include file="$(find crazyflie_gazebo)/launch/spawn_mav.launch">
+      <arg name="is_hitl" value="$(arg is_hitl)"/>
+      <arg name="mav_name" value="$(arg mav_name)" />
+      <arg name="model" value="$(find crazyflie_gazebo)/models/rotors_description/urdf/$(arg mav_name)_base.xacro" />
+      <arg name="tf_prefix" value="$(arg tf_prefix_1)"/>
+      <arg name="color_prop_front" default="$(arg color_prop_front_1)" />
+      <arg name="color_prop_back" default="$(arg color_prop_back_1)" />
+      <arg name="x" default="$(arg x_1)"/>
+      <arg name="y" default="$(arg y_1)"/>
+      <arg name="z" default="$(arg z_1)"/>
+      <arg name="yaw" default="$(arg yaw_1)"/>
+      <arg name="enable_camera" default="$(arg enable_camera)"/>
+      <arg name="camera_fps" default="$(arg camera_fps)" />
+      <arg name="camera_hfov" default="$(arg camera_hfov)" />
+      <arg name="camera_image_width" default="$(arg camera_image_width)" />
+      <arg name="camera_image_height" default="$(arg camera_image_height)" />
+      <arg name="camera_min_distance" default="$(arg camera_min_distance)" />
+      <arg name="camera_max_distance" default="$(arg camera_max_distance)" />
+      <arg name="camera_noise_stddev" default="$(arg camera_noise_stddev)" />
+    </include>
+  </group>
+
+  <!-- Spawn the crazyflie handler model -->
+  <group ns="$(arg handerName)">
+    <include file="$(find crazyflie_gazebo)/launch/spawn_plugin.launch">
+      <arg name="plugin_name" value="$(arg handerName)" />
+      <arg name="nbQuads" value="$(arg nbQuads)" />
+      <arg name="cfPrefix" value="$(arg cfPrefix)" />
+      <arg name="udpPort" value="$(arg udpPort)" />
+      <arg name="firstIndex" value="$(arg firstIndex)" />
+
+      <arg name="enable_logging" value="$(arg enable_logging)"/>
+      <arg name="enable_parameters" value="$(arg enable_parameters)"/>
+      <arg name="use_ros_time" value="$(arg use_ros_time)"/>
+      <arg name="enable_logging_imu" value="$(arg enable_logging_imu)"/>
+      <arg name="enable_logging_temperature" value="$(arg enable_logging_temperature)"/>
+      <arg name="enable_logging_magnetic_field" value="$(arg enable_logging_magnetic_field)"/>
+      <arg name="enable_logging_pressure" value="$(arg enable_logging_pressure)"/>
+      <arg name="enable_logging_battery" value="$(arg enable_logging_battery)"/>
+      <arg name="enable_logging_packets" value="$(arg enable_logging_packets)"/>
+
+      <arg name="x" default="$(arg x_1)"/>
+      <arg name="y" default="$(arg y_1)"/>
+      <arg name="z" default="$(arg z_1)"/>
+      <arg name="yaw" default="$(arg yaw_1)"/>
+    </include>
+  </group>
+
+
+  <node name="cf_sitl" pkg="dd2419_simulation" type="cf2" />
+
+  <node name="gazebo_pose_publisher" pkg="dd2419_simulation" type="gazebo_pose_publisher.py" output="screen" />
+
+  <param name="robot_description" command="$(find xacro)/xacro.py $(find crazyflie_description)/urdf/crazyflie2.urdf.xacro" />
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+    <param name="tf_prefix" value="$(arg cfPrefix)1" />
+  </node>
+  <!--<node name="navgoal2" pkg="part2" type="navgoal2" />-->
+  <!--<node name="displaymapmarkers" pkg="part2" type="displaymapmarkers" />-->
+  <!--<node name="navgoal3" pkg="part2" type="navgoal3" />-->
+  <!--<node name="imagecircle" pkg="part3" type="imagecircle" />-->
+  <!--<node name="colorseg" pkg="part3" type="colorseg" />-->
+
+  <!--<include file = "$(find dd2419_simulation)/launch/aruco.launch">
+  <arg name = "gui" value = "false"/>
+  </include>-->
+
+  <!--Static transforms-->
+  <!--<node name="odomtomap" pkg="tf2_ros" type="static_transform_publisher" args = "0 0 0 0 0 0 map cf1/odom "/>
+  <node name="camtomap" pkg="tf2_ros" type="static_transform_publisher" args = "0.01 0 0.02 1.57079632679 3.14159265359 1.57079632679 cf1/base_link camera_link" />
+  <node name="Arucomarkers" pkg="part2" type="displaymapmarkers" args = "$(find dd2419_resources)/worlds_json/tutorial_1.world.json" />-->
+
+
+
+
+
+</launch>

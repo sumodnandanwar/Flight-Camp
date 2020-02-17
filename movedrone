@@ -1,0 +1,113 @@
+#!/usr/bin/env python
+
+import json
+import sys
+import math
+import rospy
+import tf2_ros
+import tf2_geometry_msgs
+from tf.transformations import euler_from_quaternion
+from geometry_msgs.msg import PoseStamped, Vector3
+from crazyflie_driver.msg import Position
+from tf2_msgs.msg import TFMessage
+from os.path import expanduser
+
+
+# If tutorial: 
+# rosrun assignment movedrone ~/dd2419_ws/src/course_packages/dd2419_resources/worlds_json/tutorial_1.world.json
+# If awesome:
+# rosrun assignment movedrone ~/dd2419_ws/src/course_packages/dd2419_resources/worlds_json/awesome.world.json
+
+state = 0
+
+def goal_callback(msg):
+    if msg.transforms[0].transform.translation.z == 0.0:
+        msg.transforms[0].transform.translation.z == 0.4
+    #print(msg.transforms[0])
+
+
+def publish_cmd(m):
+    cmd = Position()
+    cmd.header.stamp = rospy.Time.now()
+    cmd.header.frame_id = 'map'
+    cmd.x = m['pose']['position'][0]
+    cmd.y = m['pose']['position'][1]
+    cmd.z = 0.3
+    cmd.yaw = m['pose']['orientation'][2]
+
+    # rospy.loginfo(cmd)
+
+    pub_cmd.publish(cmd)
+
+
+def dist(myposex,myposey,markx,marky):
+    d = math.sqrt((myposex-markx)**2+(myposey-marky)**2)
+    return d
+
+def new_goal(mypose):
+    global origin, marker0, marker9, state, stopsign
+    tol = 0.1
+    if dist(mypose.pose.position.x,
+    mypose.pose.position.y,
+    marker0['pose']['position'][0],
+    marker0['pose']['position'][1]) < tol:
+        state = 2
+    elif dist(mypose.pose.position.x,
+    mypose.pose.position.y,
+    marker9['pose']['position'][0],
+    marker9['pose']['position'][1]) < tol:
+        state = 1
+    elif dist(mypose.pose.position.x,
+    mypose.pose.position.y,
+    stopsign['pose']['position'][0],
+    stopsign['pose']['position'][1]) < tol:
+        state = 2
+
+
+
+rospy.init_node('movedrone')
+sub_pose = rospy.Subscriber('/cf1/pose', PoseStamped, new_goal)
+pub_cmd  = rospy.Publisher('/cf1/cmd_position', Position, queue_size=2)
+tf_buf   = tf2_ros.Buffer()
+tf_lstn  = tf2_ros.TransformListener(tf_buf)
+
+
+def main():
+    global origin, marker0, marker9, state, stopsign
+    rate = rospy.Rate(10)  # Hz
+
+    # Let ROS filter through the arguments
+    # args = rospy.myargv(argv=argv)
+
+    # Load world JSON
+    path = expanduser('~')
+    path += '/dd2419_ws/src/course_packages/dd2419_resources/worlds_json/tutorial_1.world.json'
+
+    with open(path, 'rb') as f:
+        world = json.load(f)
+
+    # Get landmark positions
+    markers = world['markers']
+    origin = world['origin'][0]
+    marker0 = markers[0]
+    marker0['pose']['orientation'][2] +=90 
+    marker9 = markers[9]
+    stopsign = world['roadsigns'][14]
+    stopsign['pose']['position'][1] -= 0.4
+    # stopsign['pose']['orientation'][0] += 90
+    # rospy.loginfo(stopsign)
+
+
+    while not rospy.is_shutdown():
+        if state == 0:
+            publish_cmd(marker9)
+        elif state == 1:
+            publish_cmd(marker0)
+        elif state == 2:
+            publish_cmd(stopsign)
+        rate.sleep()
+
+
+
+if __name__ == '__main__':
+    main()
